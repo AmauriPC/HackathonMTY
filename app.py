@@ -1,11 +1,12 @@
-import pandas as pd  # pip install pandas openpyxl
+import pandas as pd
 from collections import Counter
 import re
 import tabulate
-import plotly.express as px  # pip install plotly-express
+import plotly.express as px
+import altair as alt  # Specify Altair import
 from st_aggrid import AgGrid, GridOptionsBuilder
 import streamlit_pandas as sp
-import streamlit as st  # pip install streamlit
+import streamlit as st
 
 st.set_page_config(page_title="Sales Dashboaradsfd", page_icon=":telephone_receiver:", layout="wide")
 
@@ -23,6 +24,40 @@ def get_data_from_excel():
     return df
 
 df = get_data_from_excel()
+
+
+
+#############  OPERACIONES sobre un nuevo dataframe de auxiliar para el promedio de duracion
+
+# Crear un nuevo DataFrame para realizar operaciones
+df_operaciones = df.copy()
+
+# Convert 'Duración' column to datetime
+df_operaciones['Duración_Prueba'] = pd.to_datetime(df_operaciones['Duración'], format='%H:%M')
+
+# Extraer los minutos de la columna 'Duración'
+df_operaciones['Duración_minutes'] = df_operaciones['Duración_Prueba'].dt.hour
+
+# Calcular el promedio de duración en minutos
+average_duration = df_operaciones['Duración_minutes'].mean()
+
+
+#############  FORMATEOS 
+# Convert 'Hora' column to datetime and format
+df['Hora'] = pd.to_datetime(df['Hora']).dt.strftime('%H:%M')
+# Convert 'Duración' column to datetime and format
+df['Duración'] = pd.to_datetime(df['Duración']).dt.strftime('%H:%M')
+# Extraer solo la fecha (sin la hora)
+df['Fecha'] = df['Fecha'].dt.date
+
+# Configurar 'ID_llamada' como índice
+df.set_index('ID_llamada', inplace=True)
+
+# Eliminar la columna predeterminada de índices (si existe)
+if 'index' in df.columns:
+    df.drop(columns='index', inplace=True)
+
+
 
 # ---- SIDEBAR ----
 st.sidebar.header("Please Filter Here:")
@@ -43,7 +78,11 @@ df_selection = df.query(
     "Sentimiento == @sentimiento & Score == @score"
 )
 
+# Filtrar el DataFrame según los filtros seleccionados en el sidebar
+df_selection = df.query("Sentimiento == @sentimiento & Score == @score")
 
+# Actualizar el número total de registros en base a la selección actual
+total_sales = len(df_selection)
 
 # ---- MAINPAGE ----
 
@@ -52,10 +91,9 @@ st.markdown("##")
 
 
 # TOP KPI's
-total_sales = int(df_selection["Score"].sum())
-average_rating = round(df_selection["Score"].mean(), 1)
+average_rating = int(round(df_selection["Score"].mean(), 0))
 star_rating = ":star:" * int(round(average_rating, 0))
-average_sale_by_transaction = df_selection["Duración"].mean()
+average_sale_by_transaction = df_selection["Duración"]
 
 
 # Lista de stop words (artículos y preposiciones comunes en español)
@@ -85,17 +123,18 @@ palabras_mas_frecuentes = contador_palabras.most_common(10)
 
 
 
-
 left_column, middle_column, right_column = st.columns(3)
 with left_column:
     st.subheader("Total de Registros Ingresados:")
     st.subheader(f"{total_sales:,} Registros")
-with middle_column:
+with right_column:
     st.subheader("Calificación promedio:")
     st.subheader(f"{average_rating} {star_rating}")
-with right_column:
+
+left_column, middle_column, right_column = st.columns(3)
+with left_column:
     st.subheader("Duración promedio por llamada:")
-    st.subheader(f"{average_sale_by_transaction} minutos")
+    st.subheader(f"{average_duration:.2f} minutos")
 
 
 # Dividir la lista de palabras en dos partes
@@ -109,9 +148,9 @@ palabras_parte2, frecuencias_parte2 = zip(*parte2)
 
 # Crear un DataFrame combinado para ambas partes
 df_combined = pd.DataFrame({
-    "Palabras (0-5)": palabras_parte1,
+    "Palabras": palabras_parte1,
     "Frecuencia": frecuencias_parte1,
-    "Palabras (6-10)": palabras_parte2,
+    "Palabras ": palabras_parte2,
     "Frecuencia ": frecuencias_parte2
 })
 
@@ -120,11 +159,19 @@ table_markdown = df_combined.to_markdown(index=False)
 
 # Mostrar resultados en Streamlit como texto en formato Markdown
 st.subheader("Las 10 palabras más frecuentes (sin artículos y preposiciones):")
-st.markdown(table_markdown)
+left_column, middle_column, right_column = st.columns(3)
+with middle_column:
+    st.markdown(table_markdown)
+
+
 
 
 st.title("Archivo Ingresado")
 st.write(df)
+
+
+
+
 
 # st.markdown("""---""")
 
