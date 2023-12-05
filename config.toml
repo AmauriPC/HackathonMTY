@@ -1,0 +1,5 @@
+# config.toml
+[app]
+title = "TeamMTY - NPS Inteligente :telephone_receiver:"
+description = "Equipo *****"
+backgroundColor = "#002B48"

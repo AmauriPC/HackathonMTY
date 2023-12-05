@@ -53,13 +53,12 @@ if not df.empty:
     df_operaciones = df.copy()
 
     # Convert 'Duración' column to datetime
-    df_operaciones['Duración_Prueba'] = pd.to_datetime(df_operaciones['Duración'], format='%H:%M')
+    df['Duración_Prueba'] = pd.to_datetime(df['Duración'], format='%H:%M')
 
     # Extraer los minutos de la columna 'Duración'
-    df_operaciones['Duración_minutes'] = df_operaciones['Duración_Prueba'].dt.hour
+    df['Duración_minutes'] = df['Duración_Prueba'].dt.hour
 
-    # Calcular el promedio de duración en minutos
-    average_duration = df_operaciones['Duración_minutes'].mean()
+
 
     #############  FORMATEOS
     # Convert 'Hora' column to datetime and format
@@ -110,8 +109,12 @@ if not df.empty:
     frecuencia_horas = df_selection['Hora_del_dia'].value_counts()
     hora_mas_frecuente = frecuencia_horas.idxmax()
 
+    
     # Actualizar el número total de registros en base a la selección actual
     total_registros = len(df_selection)
+
+    # Calcular el promedio de duración en minutos
+    average_duration = df_selection['Duración_minutes'].mean()
 
     # ---- MAINPAGE ----
     st.title(":telephone_receiver: NPS Inteligente - Equipo MTY")
@@ -152,6 +155,11 @@ if not df.empty:
     left_column, middle_column, right_column = st.columns(3)
     with left_column:
         st.subheader("Total de Registros Ingresados: " f"{total_registros:,} Registros")
+    
+    left_column, _, _ = st.columns(3)
+    with left_column:
+        st.markdown("<span style='color: #B2890F; font-weight: bold; font-size: 30px;'>Total de Registros Ingresados:</span> <span style='font-size: 30px;'>{: ,}</span> <span style='font-size: 30px;'>Registros</span>".format(total_registros), unsafe_allow_html=True)
+
     with right_column:
         st.subheader("Calificación promedio:")
         st.subheader(f"{average_rating} {star_rating}")
@@ -163,6 +171,22 @@ if not df.empty:
         st.subheader("Promedio de palabras por transcripción: " f"{promedio_palabras} palabras")
     with left_column:
         st.subheader(f"Hora del día con más llamadas: {hora_mas_frecuente}:00")
+    # Calcular la hora del día más común por cada categoría
+    categorias = df_selection['Sentimiento'].unique()
+
+    for categoria in categorias:
+        # Filtrar el DataFrame por categoría
+        df_categoria = df_selection[df_selection['Sentimiento'] == categoria]
+
+        # Calcular la hora del día más común para la categoría
+        df_categoria['Hora'] = pd.to_datetime(df_categoria['Hora'])
+        df_categoria['Hora_del_dia'] = df_categoria['Hora'].dt.hour
+        frecuencia_horas_categoria = df_categoria['Hora_del_dia'].value_counts()
+        hora_mas_frecuente_categoria = frecuencia_horas_categoria.idxmax()
+
+        # Mostrar la información en la interfaz de Streamlit
+        st.subheader(f"Hora más común para la categoría '{categoria}': {hora_mas_frecuente_categoria}:00")
+
         
         
     # Dividir la lista de palabras en dos partes
