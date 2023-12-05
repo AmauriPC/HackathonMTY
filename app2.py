@@ -5,9 +5,21 @@ import streamlit as st
 import altair as alt
 from io import BytesIO
 from fpdf import FPDF
+import toml
 
+# Configurar el diseño de la página a "wide"
+st.set_page_config(layout="wide")
 
-st.set_page_config(page_title="TeamMTY - NPS Inteligente", page_icon=":telephone_receiver:", layout="wide")
+# Leer el archivo TOML
+config_data = toml.load("config.toml")
+
+# Acceder a los valores en el archivo TOML
+app_title = config_data["app"]["title"]
+app_description = config_data["app"]["description"]
+
+# Configurar la aplicación Streamlit
+st.title(app_title)
+st.write(app_description)
 
 # Inicializar DataFrame vacío
 df = pd.DataFrame()
@@ -57,6 +69,13 @@ if not df.empty:
     # Extraer solo la fecha (sin la hora)
     df['Fecha'] = df['Fecha'].dt.date
 
+    # Dividir la transcripción en palabras y contar la cantidad de palabras
+    df['Palabras_Transcripcion'] = df['Transcripción'].apply(lambda x: len(str(x).split()))
+
+    # Calcular el promedio de palabras en las transcripciones
+    promedio_palabras = round(df['Palabras_Transcripcion'].mean())
+
+
     # Configurar 'ID_llamada' como índice
     df.set_index('ID_llamada', inplace=True)
 
@@ -64,7 +83,7 @@ if not df.empty:
     if 'index' in df.columns:
         df.drop(columns='index', inplace=True)
 
-    # ---- SIDEBAR ----
+        # SIDEBAR
     st.sidebar.header("Please Filter Here:")
 
     sentimiento = st.sidebar.multiselect(
@@ -81,6 +100,15 @@ if not df.empty:
 
     # Filtrar el DataFrame según los filtros seleccionados en el sidebar
     df_selection = df.query("Sentimiento == @sentimiento & Score == @score")
+
+    # Calcular el promedio de palabras en las transcripciones
+    promedio_palabras = round(df_selection['Palabras_Transcripcion'].mean())
+
+    # Calcular la hora del día con más llamadas
+    df_selection['Hora'] = pd.to_datetime(df_selection['Hora'])
+    df_selection['Hora_del_dia'] = df_selection['Hora'].dt.hour
+    frecuencia_horas = df_selection['Hora_del_dia'].value_counts()
+    hora_mas_frecuente = frecuencia_horas.idxmax()
 
     # Actualizar el número total de registros en base a la selección actual
     total_registros = len(df_selection)
@@ -128,10 +156,15 @@ if not df.empty:
         st.subheader("Calificación promedio:")
         st.subheader(f"{average_rating} {star_rating}")
 
-    left_column, middle_column, right_column = st.columns(3)
+    # left_column, middle_column, right_column = st.columns(3)
     with left_column:
         st.subheader("Duración promedio por llamada: " f"{average_duration:.2f} minutos")
-
+    with right_column:
+        st.subheader("Promedio de palabras por transcripción: " f"{promedio_palabras} palabras")
+    with left_column:
+        st.subheader(f"Hora del día con más llamadas: {hora_mas_frecuente}:00")
+        
+        
     # Dividir la lista de palabras en dos partes
     mitad = len(palabras_mas_frecuentes) // 2
     parte1 = palabras_mas_frecuentes[:mitad]
@@ -151,6 +184,7 @@ if not df.empty:
 
     # Convertir DataFrame a formato Markdown
     table_markdown = df_combined.to_markdown(index=False)
+
 
     # Mostrar resultados en Streamlit como texto en formato Markdown
     st.subheader("Las 10 palabras más frecuentes (sin artículos y preposiciones):")
@@ -203,7 +237,6 @@ if not df.empty:
 
 else:
     st.warning("El archivo está vacío. Favor de subir uno válido.")
-
 
 
 # ---- HIDE STREAMLIT STYLE ----
