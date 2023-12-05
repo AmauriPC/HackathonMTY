@@ -7,8 +7,7 @@ from io import BytesIO
 from fpdf import FPDF
 import toml
 
-# Configurar el diseño de la página a "wide"
-st.set_page_config(layout="wide")
+
 
 # Leer el archivo TOML
 config_data = toml.load("config.toml")
@@ -16,6 +15,11 @@ config_data = toml.load("config.toml")
 # Acceder a los valores en el archivo TOML
 app_title = config_data["app"]["title"]
 app_description = config_data["app"]["description"]
+background_color = config_data["app"].get("backgroundColor")  # Valor predeterminado es blanco
+
+
+# Configurar el diseño de la página a "wide"
+st.set_page_config(layout="wide")
 
 # Configurar la aplicación Streamlit
 st.title(app_title)
@@ -236,14 +240,18 @@ if not df.empty:
     # Mostrar gráfica en Streamlit
     st.altair_chart(chart, use_container_width=True)
 
+
+    df_selection['Hora'] = pd.to_datetime(df['Hora']).dt.strftime('%H:%M')
+    df_selection.drop(columns=['Duración_Prueba', 'Palabras_Transcripcion', 'Duración_minutes','Hora_del_dia'], inplace=True)
+
     # # Imprime archivo ingresado en formato de tabla
     st.title("Archivo Ingresado")
-    st.dataframe(df)
+    st.dataframe(df_selection)
 
     # Agregar botones de descarga para el DataFrame en diferentes formatos
     st.download_button(
         label="Descargar como CSV",
-        data=df.to_csv(index=False).encode('utf-8'),
+        data=df_selection.to_csv(index=False).encode('utf-8'),
         file_name="dataframe.csv",
         mime="text/csv"
     )
